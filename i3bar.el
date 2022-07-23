@@ -52,12 +52,6 @@
           (string :tag "Separator")
           (const :tag "None" nil)))
 
-(defconst i3bar--input-buffer-name " *i3bar input*")
-
-(defconst i3bar--mode-line-element '(:eval i3bar-string)
-  "The i3bar element to include in the mode-line.
-Unfortunately,we need to eval to keep the formatting")
-
 (defvar i3bar--process nil)
 
 (defun i3bar--json-parse ()
@@ -69,14 +63,16 @@ Unfortunately,we need to eval to keep the formatting")
 (defvar i3bar-string ""
   "The i3bar string displayed in the mode-line.")
 
+(put 'i3bar-string 'risky-local-variable t)
+
 (define-minor-mode i3bar-mode
   "Toggle display of the i3bar in the mode-line."
   :global t :group 'i3bar
   (i3bar--stop)
   (or global-mode-string (setq global-mode-string '("")))
   (when i3bar-mode
-    (unless (member i3bar--mode-line-element global-mode-string)
-      (setq global-mode-string (append global-mode-string (list i3bar--mode-line-element))))
+    (unless (memq 'i3bar-string global-mode-string)
+      (setq global-mode-string (append global-mode-string '(i3bar-string))))
     (i3bar--start)))
 
 (defun i3bar--insert-block (block)
@@ -89,7 +85,6 @@ Unfortunately,we need to eval to keep the formatting")
     (when (and separator (length> i3bar-separator 0))
       (setq full_text (concat full_text "|")))
     full_text))
-
 
 (defun i3bar--update (update)
   (setq i3bar-string (mapconcat #'i3bar--insert-block update))
@@ -141,7 +136,7 @@ Unfortunately,we need to eval to keep the formatting")
   (when (and i3bar--process (process-live-p i3bar--process))
     (delete-process i3bar--process)
     (setq i3bar--process nil))
-  (with-current-buffer (get-buffer-create i3bar--input-buffer-name)
+  (with-current-buffer (get-buffer-create  " *i3bar input*")
     (erase-buffer)
     (setq i3bar--process (make-process
                           :name "i3bar"
