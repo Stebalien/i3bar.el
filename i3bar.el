@@ -27,7 +27,7 @@
 
 ;;; Commentary:
 
-;; Displays the output of an i3status command in the Emacs tab-line.
+;; Displays the output of an i3status command in the Emacs mode-line (or tab-line).
 
 ;;; Code:
 
@@ -38,7 +38,8 @@
   :version "0.0.1"
   :group 'mode-line)
 
-(defcustom i3bar-command (seq-find 'executable-find '("i3status" "i3status-rs") "i3status")
+(defcustom i3bar-command
+  (seq-find 'executable-find '("i3status" "i3status-rs" "i3blocks") "i3status")
   "The i3status command."
   :group 'i3bar
   :type '(choice
@@ -52,13 +53,13 @@
           (string :tag "Separator")
           (const :tag "None" nil)))
 
-(defvar i3bar--process nil)
+(defvar i3bar--process nil
+  "The running i3bar process, if any.")
 
 (defun i3bar--json-parse ()
-  "Parse a json object from the buffer, or signal an error."
-  (json-parse-buffer
-   :object-type 'plist
-   :false-object nil))
+  "Parse a json object from the buffer, or signal an error.
+This is a thin wrapper around `json-parse-buffer', which changes the defaults."
+  (json-parse-buffer :object-type 'plist :false-object nil))
 
 (defvar i3bar-string ""
   "The i3bar string displayed in the mode-line.")
@@ -66,7 +67,7 @@
 (put 'i3bar-string 'risky-local-variable t)
 
 (define-minor-mode i3bar-mode
-  "Toggle display of the i3bar in the mode-line."
+  "Display an i3bar in the mode-line."
   :global t :group 'i3bar
   (i3bar--stop)
   (or global-mode-string (setq global-mode-string '("")))
@@ -76,57 +77,68 @@
     (i3bar--start)))
 
 (defun i3bar--insert-block (block)
-  (cl-destructuring-bind (&key (full_text "") color background (separator t) &allow-other-keys) block
-    ;; Strip alpha.
+  (cl-destructuring-bind
+      (&key (full_text "") color background (separator t) &allow-other-keys)
+      block
     (let (face)
       (when color (setq face (plist-put face :foreground (substring color 0 -2))))
       (when background (setq face (plist-put face :background (substring background 0 -2))))
       (when face (set-text-properties 0 (length full_text) `(face ,face) full_text)))
     (when (and separator (length> i3bar-separator 0))
-      (setq full_text (concat full_text "|")))
+      (setq full_text (concat full_text i3bar-separator)))
     full_text))
 
 (defun i3bar--update (update)
+  "Apply an update to the i3status bar."
   (setq i3bar-string (mapconcat #'i3bar--insert-block update))
   (force-mode-line-update t))
 
 (defun i3bar--process-filter (proc string)
+  "Process output from the i3status process."
   (when (buffer-live-p (process-buffer proc))
     (with-current-buffer (process-buffer proc)
+      ;; Write the input to the buffer (might be partial).
       (save-excursion
         (goto-char (process-mark proc))
         (insert string)
         (set-marker (process-mark proc) (point)))
+      ;; Handle as much as we can.
       (condition-case err
-        (while (progn (skip-chars-forward "[:space:]") (not (eobp)))
-          (process-put proc 'i3bar-state
-           (pcase (process-get proc 'i3bar-state)
-             ('nil (unless (= (plist-get (i3bar--json-parse) :version) 1)
-                        (error "Version not supported"))
-                      'begin)
-             ('begin (unless (= (following-char) ?\[)
-                       (error "Expected array of updates"))
+          (while (progn (skip-chars-forward "[:space:]") (not (eobp)))
+            (process-put
+             proc 'i3bar-state
+             (pcase (process-get proc 'i3bar-state)
+               ;; Expect a protocol header
+               ('nil (unless (= (plist-get (i3bar--json-parse) :version) 1)
+                       (error "Version not supported"))
+                     'begin)
+               ;; Expect an opening [ of the infinite array.
+               ('begin (unless (= (following-char) ?\[)
+                         (error "Expected array of updates"))
+                       (forward-char)
+                       'update)
+               ;; Expect an element in the infinite "update" array.
+               ('update (if (= (following-char) ?\])
+                            (progn (forward-char) 'end)
+                          (i3bar--update (i3bar--json-parse))
+                          'sep))
+               ;; Expect a separator (comma).
+               ('sep (unless (= (following-char) ?,)
+                       (error "Expected a trailing comma"))
                      (forward-char)
                      'update)
-             ('update (if (= (following-char) ?\])
-                         (progn (forward-char) 'end)
-                       (i3bar--update (i3bar--json-parse))
-                       'sep))
-             ('sep (unless (= (following-char) ?,)
-                     (error "Expected a trailing comma"))
-                   (forward-char)
-                   'update)
-             ('end (error "Unexpected output")))))
+               ;; We don't expect anything here, we should be done.
+               ('end (error "Unexpected output")))))
         (json-parse-error) ; partial input, move on.
-        ((error debug)
+        ((error debug)     ; cleanup after a failure.
          (erase-buffer)
          (delete-process i3bar--process)
-         (setq i3bar-string (format "i3bar failed: %s" err))
-         (setq i3bar--process nil)))
+         (setq i3bar-string (format "i3bar failed: %s" err)
+               i3bar--process nil)))
       (delete-region (point-min) (point)))))
 
 (defun i3bar-reload ()
-  "Reload the i3bar config."
+  "Restart the i3status program."
   (interactive)
   (unless i3bar-mode (user-error "The i3bar-mode is not enabled"))
   (i3bar--start))
