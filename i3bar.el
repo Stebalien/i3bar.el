@@ -70,8 +70,8 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
   "Display an i3bar in the mode-line."
   :global t :group 'i3bar
   (i3bar--stop)
-  (or global-mode-string (setq global-mode-string '("")))
   (when i3bar-mode
+    (or global-mode-string (setq global-mode-string '("")))
     (unless (memq 'i3bar-string global-mode-string)
       (setq global-mode-string (append global-mode-string '(i3bar-string))))
     (i3bar--start)))
@@ -95,47 +95,54 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 
 (defun i3bar--process-filter (proc string)
   "Process output from the i3status process."
-  (when (buffer-live-p (process-buffer proc))
-    (with-current-buffer (process-buffer proc)
-      ;; Write the input to the buffer (might be partial).
-      (save-excursion
-        (goto-char (process-mark proc))
-        (insert string)
-        (set-marker (process-mark proc) (point)))
-      ;; Handle as much as we can.
-      (condition-case err
-          (while (progn (skip-chars-forward "[:space:]") (not (eobp)))
-            (process-put
-             proc 'i3bar-state
-             (pcase (process-get proc 'i3bar-state)
-               ;; Expect a protocol header
-               ('nil (unless (= (plist-get (i3bar--json-parse) :version) 1)
-                       (error "Version not supported"))
-                     'begin)
-               ;; Expect an opening [ of the infinite array.
-               ('begin (unless (= (following-char) ?\[)
-                         (error "Expected array of updates"))
+  (let ((buf (process-buffer proc)))
+    (when (buffer-live-p buf)
+      (with-current-buffer buf
+        ;; Write the input to the buffer (might be partial).
+        (save-excursion
+          (goto-char (process-mark proc))
+          (insert string)
+          (set-marker (process-mark proc) (point)))
+        ;; Handle as much as we can.
+        (condition-case err
+            (while (progn (skip-chars-forward "[:space:]") (not (eobp)))
+              (process-put
+               proc 'i3bar-state
+               (pcase (process-get proc 'i3bar-state)
+                 ;; Expect a protocol header
+                 ('nil (unless (= (plist-get (i3bar--json-parse) :version) 1)
+                         (error "Version not supported"))
+                       'begin)
+                 ;; Expect an opening [ of the infinite array.
+                 ('begin (unless (= (following-char) ?\[)
+                           (error "Expected array of updates"))
+                         (forward-char)
+                         'update)
+                 ;; Expect an element in the infinite "update" array.
+                 ('update (if (= (following-char) ?\])
+                              (progn (forward-char) 'end)
+                            (i3bar--update (i3bar--json-parse))
+                            'sep))
+                 ;; Expect a separator (comma).
+                 ('sep (unless (= (following-char) ?,)
+                         (error "Expected a trailing comma"))
                        (forward-char)
                        'update)
-               ;; Expect an element in the infinite "update" array.
-               ('update (if (= (following-char) ?\])
-                            (progn (forward-char) 'end)
-                          (i3bar--update (i3bar--json-parse))
-                          'sep))
-               ;; Expect a separator (comma).
-               ('sep (unless (= (following-char) ?,)
-                       (error "Expected a trailing comma"))
-                     (forward-char)
-                     'update)
-               ;; We don't expect anything here, we should be done.
-               ('end (error "Unexpected output")))))
-        (json-parse-error) ; partial input, move on.
-        ((error debug)     ; cleanup after a failure.
-         (erase-buffer)
-         (delete-process i3bar--process)
-         (setq i3bar-string (format "i3bar failed: %s" err)
-               i3bar--process nil)))
-      (delete-region (point-min) (point)))))
+                 ;; We don't expect anything here, we should be done.
+                 ('end (error "Unexpected output")))))
+          (json-parse-error) ; partial input, move on.
+          ((error debug)     ; cleanup after a failure.
+           (delete-process i3bar--process)
+           (setq i3bar-string (format "i3bar failed: %s" err))))
+        (when (buffer-live-p buf) (delete-region (point-min) (point)))))))
+
+(defun i3bar--process-sentinel (proc status)
+  "Handle events from the i3status process."
+  (unless (process-live-p proc)
+    (setq i3bar--process nil)
+    (let ((buf (process-buffer proc)))
+      (when (and buf (buffer-live-p buf)) (kill-buffer buf)))
+    (setq i3bar-string (format "i3bar: %s" status))))
 
 (defun i3bar-reload ()
   "Restart the i3status program."
@@ -145,27 +152,24 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 
 (defun i3bar--start ()
   "Start the i3bar."
-  (when (and i3bar--process (process-live-p i3bar--process))
-    (delete-process i3bar--process)
-    (setq i3bar--process nil))
-  (with-current-buffer (get-buffer-create  " *i3bar input*")
-    (erase-buffer)
-    (setq i3bar--process (make-process
-                          :name "i3bar"
-                          :buffer (current-buffer)
-                          :sentinel 'ignore
-                          :stderr (messages-buffer)
-                          :command (ensure-list i3bar-command)
-                          :connection-type 'pipe
-                          :noquery t
-                          :filter #'i3bar--process-filter))))
+  (i3bar--stop)
+  (setq i3bar--process (make-process
+                        :name "i3bar"
+                        :buffer " *i3status process*"
+                        :stderr " *i3status stderr*"
+                        :command (ensure-list i3bar-command)
+                        :connection-type 'pipe
+                        :noquery t
+                        :sentinel #'i3bar--process-sentinel
+                        :filter #'i3bar--process-filter)))
 
 (defun i3bar--stop ()
   "Stop the i3bar."
+  ;; Kill the process, if any.
   (when (and i3bar--process (process-live-p i3bar--process))
-    (delete-process i3bar--process)
-    (setq i3bar-string ""
-          i3bar--process nil)))
+    (delete-process i3bar--process))
+  ;; And clear any error/exit messages.
+  (setq i3bar-string ""))
 
 (provide 'i3bar)
 ;;; i3bar.el ends here
