@@ -53,6 +53,20 @@
           (string :tag "Separator")
           (const :tag "None" nil)))
 
+(defcustom i3bar-face-function 'i3bar-face-passthrough
+  "Choose the i3bar face given a foreground/background color.
+This function is passed a foreground/background color pair and is
+expected to return the desired face (if any)."
+  :group 'i3bar
+  :type '(choice function
+                 (const :tag "No colors" nil)))
+
+(defun i3bar-face-passthrough (foreground background)
+  (let (face)
+    (when foreground (setq face (plist-put face :foreground foreground)))
+    (when background (setq face (plist-put face :background background)))
+    face))
+
 (defvar i3bar--process nil
   "The running i3bar process, if any.")
 
@@ -80,10 +94,11 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
   (cl-destructuring-bind
       (&key (full_text "") color background (separator t) &allow-other-keys)
       block
-    (let (face)
-      (when color (setq face (plist-put face :foreground (substring color 0 -2))))
-      (when background (setq face (plist-put face :background (substring background 0 -2))))
-      (when face (set-text-properties 0 (length full_text) `(face ,face) full_text)))
+    (when color (setq color (substring color 0 -2)))
+    (when background (setq background (substring background 0 -2)))
+    (when-let (face (and i3bar-face-function
+                         (funcall i3bar-face-function color background)))
+      (set-text-properties 0 (length full_text) `(face ,face) full_text))
     (when (and separator (length> i3bar-separator 0))
       (setq full_text (concat full_text i3bar-separator)))
     full_text))
