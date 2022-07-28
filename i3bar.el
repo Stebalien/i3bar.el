@@ -202,7 +202,8 @@ If the process has exited, this function stores the exit STATUS in
 (defun i3bar--start ()
   "Start the i3bar."
   (i3bar--stop)
-  (setq i3bar--process (make-process
+  (condition-case err
+    (setq i3bar--process (make-process
                         :name "i3bar"
                         :buffer " *i3status process*"
                         :stderr " *i3status stderr*"
@@ -210,7 +211,9 @@ If the process has exited, this function stores the exit STATUS in
                         :connection-type 'pipe
                         :noquery t
                         :sentinel #'i3bar--process-sentinel
-                        :filter #'i3bar--process-filter)))
+                        :filter #'i3bar--process-filter))
+    (error
+     (setq i3bar-string (format "starting i3bar: %s" (error-message-string err))))))
 
 (defun i3bar--stop ()
   "Stop the i3bar."
