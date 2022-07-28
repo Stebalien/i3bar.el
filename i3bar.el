@@ -33,6 +33,17 @@
 
 (require 'cl-macs)
 
+(defvar i3bar--last-update nil
+  "The last i3bar update received.")
+
+(defvar i3bar--process nil
+  "The running i3bar process, if any.")
+
+(defvar i3bar-string ""
+  "The i3bar string displayed in the mode-line.")
+
+(put 'i3bar-string 'risky-local-variable t)
+
 (defgroup i3bar nil
   "\
 i3bar status display for Emacs."
@@ -91,21 +102,10 @@ i3status program."
     (when background (setq face (plist-put face :background background)))
     face))
 
-(defvar i3bar--process nil
-  "The running i3bar process, if any.")
-
 (defun i3bar--json-parse ()
   "Parse a json object from the buffer, or signal an error.
 This is a thin wrapper around `json-parse-buffer', which changes the defaults."
   (json-parse-buffer :object-type 'plist :false-object nil))
-
-(defvar i3bar-string ""
-  "The i3bar string displayed in the mode-line.")
-
-(put 'i3bar-string 'risky-local-variable t)
-
-(defvar i3bar--last-update nil
-  "The last i3bar update received.")
 
 (defun i3bar--format-block (block)
   "Format an i3bar BLOCK for display."
