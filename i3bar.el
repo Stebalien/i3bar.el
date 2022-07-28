@@ -117,9 +117,11 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
       block
     (when color (setq color (substring color 0 -2)))
     (when background (setq background (substring background 0 -2)))
-    (when-let (face (and i3bar-face-function
-                         (funcall i3bar-face-function color background)))
-      (set-text-properties 0 (length full_text) `(face ,face) full_text))
+    (let (properties)
+      (when-let (face (and i3bar-face-function
+                           (funcall i3bar-face-function color background)))
+        (setq properties (plist-put properties 'face face)))
+      (set-text-properties 0 (length full_text) properties full_text))
     (when (and separator (length> i3bar-separator 0))
       (setq full_text (concat full_text i3bar-separator)))
     full_text))
