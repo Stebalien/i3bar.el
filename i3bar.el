@@ -67,6 +67,7 @@ i3bar status display for Emacs."
   :type '(choice
           (string :tag "Shell Command")
           (repeat (string)))
+  :initialize #'custom-initialize-default
   :set (lambda (symbol value)
          (set-default-toplevel-value symbol value)
          (when i3bar-mode (i3bar-restart))))
@@ -77,6 +78,7 @@ i3bar status display for Emacs."
   :type '(choice
           (string :tag "Separator")
           (const :tag "None" nil))
+  :initialize #'custom-initialize-default
   :set #'i3bar--custom-set)
 
 (defcustom i3bar-face-function 'i3bar-face-passthrough
@@ -86,6 +88,7 @@ expected to return the desired face, list of faces, or nil (for no face)."
   :group 'i3bar
   :type '(choice function
                  (const :tag "No colors" nil))
+  :initialize #'custom-initialize-default
   :set #'i3bar--custom-set)
 
 (defun i3bar--custom-set (symbol value)
@@ -123,8 +126,9 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 
 (defun i3bar--redisplay ()
   "Redisplay the i3bar."
-  (setq i3bar-string (mapconcat #'i3bar--format-block i3bar--last-update))
-  (force-mode-line-update t))
+  (when i3bar-mode
+    (setq i3bar-string (mapconcat #'i3bar--format-block i3bar--last-update))
+    (force-mode-line-update t)))
 
 (defun i3bar--update (update)
   "Apply an UPDATE to the i3status bar."
@@ -172,7 +176,8 @@ much as it can, calling `i3bar--update' on all bar updates."
           (json-parse-error) ; partial input, move on.
           ((error debug)     ; cleanup after a failure.
            (delete-process i3bar--process)
-           (setq i3bar-string (format "i3bar failed: %s" err))))
+           (setq i3bar--last-update nil
+                 i3bar-string (format "i3bar failed: %s" err))))
         (when (buffer-live-p buf) (delete-region (point-min) (point)))))))
 
 (defun i3bar--process-sentinel (proc status)
@@ -183,7 +188,8 @@ If the process has exited, this function stores the exit STATUS in
     (setq i3bar--process nil)
     (let ((buf (process-buffer proc)))
       (when (and buf (buffer-live-p buf)) (kill-buffer buf)))
-    (setq i3bar-string (format "i3bar: %s" status))))
+    (setq i3bar--last-update nil
+          i3bar-string (format "i3bar: %s" status))))
 
 (defun i3bar-restart ()
   "Restart the i3status program."
@@ -210,7 +216,8 @@ If the process has exited, this function stores the exit STATUS in
   (when (and i3bar--process (process-live-p i3bar--process))
     (delete-process i3bar--process))
   ;; And clear any error/exit messages.
-  (setq i3bar-string ""))
+  (setq i3bar-string ""
+        i3bar--last-update nil))
 
 (provide 'i3bar)
 ;;; i3bar.el ends here
