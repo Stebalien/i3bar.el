@@ -32,6 +32,50 @@ You can place the i3bar in the tab-bar as follows:
   (tab-bar-mode 1))
 ```
 
+## Theming
+
+By default, this package uses the colors specified by your `i3status` command. However, you can
+define a custom `i3bar-face-function` to override this.
+
+For example, I use the following theme with `i3status-rust`:
+
+```toml
+idle_bg = "#000000"
+idle_fg = "#aaaaaa"
+info_bg = "#000000"
+info_fg = "#bbbbbb"
+good_bg = "#000000"
+good_fg = "#cccccc"
+warning_bg = "#000000"
+warning_fg = "#eeeeee"
+critical_bg = "#000000"
+critical_fg = "#ffffff"
+separator = "\ue0b2"
+alternating_tint_bg = "#111111"
+separator_bg = "auto"
+separator_fg = "auto"
+```
+
+Then I use the following "theme" function to make the status-bar's theme match my Emacs theme:
+
+```elisp
+(defun i3bar-face-function-theme (foreground background)
+  (list
+    (pcase (and foreground (upcase foreground))
+      ("#000000" `(:foreground ,(face-background 'default nil t)))
+      ("#111111" `(:foreground ,(face-background 'hl-line nil t)))
+      ("#AAAAAA" 'shadow)
+      ("#BBBBBB" nil)
+      ("#CCCCCC" 'success)
+      ("#EEEEEE" 'warning)
+      ("#FFFFFF" 'error))
+    (pcase (and background (upcase background))
+      ("#000000" nil)
+      ("#111111" 'hl-line))))
+
+(custom-set-variables '(i3bar-face-function i3bar-face-function-theme))
+```
+
 ## Known Issues
 
 This package is missing featuers and features and has some rough edges. I'm happy to accept patches
