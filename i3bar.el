@@ -39,20 +39,29 @@ i3bar status display for Emacs."
   :version "0.0.1"
   :group 'mode-line)
 
+(defun i3bar--custom-set (symbol value)
+  "Set an i3bar custom SYMBOL to VALUE and redisplay."
+  (set-default-toplevel-value symbol value)
+  (i3bar--redisplay))
+
 (defcustom i3bar-command
   (seq-find 'executable-find '("i3status" "i3status-rs" "i3blocks") "i3status")
   "The i3status command."
   :group 'i3bar
   :type '(choice
           (string :tag "Shell Command")
-          (repeat (string))))
+          (repeat (string)))
+  :set (lambda (symbol value)
+         (set-default-toplevel-value symbol value)
+         (when i3bar-mode (i3bar-restart))))
 
 (defcustom i3bar-separator "|"
   "The default block separator."
   :group 'i3bar
   :type '(choice
           (string :tag "Separator")
-          (const :tag "None" nil)))
+          (const :tag "None" nil))
+  :set #'i3bar--custom-set)
 
 (defcustom i3bar-face-function 'i3bar-face-passthrough
   "Function to define an i3bar block face.
@@ -60,7 +69,8 @@ This function is passed a foreground/background color pair and is
 expected to return the desired face, list of faces, or nil (for no face)."
   :group 'i3bar
   :type '(choice function
-                 (const :tag "No colors" nil)))
+                 (const :tag "No colors" nil))
+  :set #'i3bar--custom-set)
 
 (defun i3bar-face-passthrough (foreground background)
   "The default i3bar face-function.
@@ -83,6 +93,9 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
   "The i3bar string displayed in the mode-line.")
 
 (put 'i3bar-string 'risky-local-variable t)
+
+(defvar i3bar--last-update nil
+  "The last i3bar update received.")
 
 (define-minor-mode i3bar-mode
   "Display an i3bar in the mode-line."
@@ -108,10 +121,15 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
       (setq full_text (concat full_text i3bar-separator)))
     full_text))
 
+(defun i3bar--redisplay ()
+  "Redisplay the i3bar."
+  (setq i3bar-string (mapconcat #'i3bar--format-block i3bar--last-update))
+  (force-mode-line-update t))
+
 (defun i3bar--update (update)
   "Apply an UPDATE to the i3status bar."
-  (setq i3bar-string (mapconcat #'i3bar--format-block update))
-  (force-mode-line-update t))
+  (setq i3bar--last-update update)
+  (i3bar--redisplay))
 
 (defun i3bar--process-filter (proc string)
   "Process output from the i3status process.
