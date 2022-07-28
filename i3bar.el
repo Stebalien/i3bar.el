@@ -39,10 +39,15 @@ i3bar status display for Emacs."
   :version "0.0.1"
   :group 'mode-line)
 
-(defun i3bar--custom-set (symbol value)
-  "Set an i3bar custom SYMBOL to VALUE and redisplay."
-  (set-default-toplevel-value symbol value)
-  (i3bar--redisplay))
+(define-minor-mode i3bar-mode
+  "Display an i3bar in the mode-line."
+  :global t :group 'i3bar
+  (i3bar--stop)
+  (when i3bar-mode
+    (or global-mode-string (setq global-mode-string '("")))
+    (unless (memq 'i3bar-string global-mode-string)
+      (setq global-mode-string (append global-mode-string '(i3bar-string))))
+    (i3bar--start)))
 
 (defcustom i3bar-command
   (seq-find 'executable-find '("i3status" "i3status-rs" "i3blocks") "i3status")
@@ -72,6 +77,11 @@ expected to return the desired face, list of faces, or nil (for no face)."
                  (const :tag "No colors" nil))
   :set #'i3bar--custom-set)
 
+(defun i3bar--custom-set (symbol value)
+  "Set an i3bar custom SYMBOL to VALUE and redisplay."
+  (set-default-toplevel-value symbol value)
+  (i3bar--redisplay))
+
 (defun i3bar-face-passthrough (foreground background)
   "The default i3bar face-function.
 This function applies the FOREGROUND and BACKGROUND colors as specified by the
@@ -96,16 +106,6 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 
 (defvar i3bar--last-update nil
   "The last i3bar update received.")
-
-(define-minor-mode i3bar-mode
-  "Display an i3bar in the mode-line."
-  :global t :group 'i3bar
-  (i3bar--stop)
-  (when i3bar-mode
-    (or global-mode-string (setq global-mode-string '("")))
-    (unless (memq 'i3bar-string global-mode-string)
-      (setq global-mode-string (append global-mode-string '(i3bar-string))))
-    (i3bar--start)))
 
 (defun i3bar--format-block (block)
   "Format an i3bar BLOCK for display."
