@@ -34,7 +34,8 @@
 (require 'cl-macs)
 
 (defgroup i3bar nil
-  "i3bar"
+  "\
+i3bar status display for Emacs."
   :version "0.0.1"
   :group 'mode-line)
 
@@ -54,14 +55,17 @@
           (const :tag "None" nil)))
 
 (defcustom i3bar-face-function 'i3bar-face-passthrough
-  "Choose the i3bar face given a foreground/background color.
+  "Function to define an i3bar block face.
 This function is passed a foreground/background color pair and is
-expected to return the desired face (if any)."
+expected to return the desired face, list of faces, or nil (for no face)."
   :group 'i3bar
   :type '(choice function
                  (const :tag "No colors" nil)))
 
 (defun i3bar-face-passthrough (foreground background)
+  "The default i3bar face-function.
+This function applies the FOREGROUND and BACKGROUND colors as specified by the
+i3status program."
   (let (face)
     (when foreground (setq face (plist-put face :foreground foreground)))
     (when background (setq face (plist-put face :background background)))
@@ -90,7 +94,8 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
       (setq global-mode-string (append global-mode-string '(i3bar-string))))
     (i3bar--start)))
 
-(defun i3bar--insert-block (block)
+(defun i3bar--format-block (block)
+  "Format an i3bar BLOCK for display."
   (cl-destructuring-bind
       (&key (full_text "") color background (separator t) &allow-other-keys)
       block
@@ -104,12 +109,14 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
     full_text))
 
 (defun i3bar--update (update)
-  "Apply an update to the i3status bar."
-  (setq i3bar-string (mapconcat #'i3bar--insert-block update))
+  "Apply an UPDATE to the i3status bar."
+  (setq i3bar-string (mapconcat #'i3bar--format-block update))
   (force-mode-line-update t))
 
 (defun i3bar--process-filter (proc string)
-  "Process output from the i3status process."
+  "Process output from the i3status process.
+This function writes the STRING to PROC's buffer, then attempts to parse as
+much as it can, calling `i3bar--update' on all bar updates."
   (let ((buf (process-buffer proc)))
     (when (buffer-live-p buf)
       (with-current-buffer buf
@@ -118,7 +125,6 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
           (goto-char (process-mark proc))
           (insert string)
           (set-marker (process-mark proc) (point)))
-        ;; Handle as much as we can.
         (condition-case err
             (while (progn (skip-chars-forward "[:space:]") (not (eobp)))
               (process-put
@@ -152,14 +158,16 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
         (when (buffer-live-p buf) (delete-region (point-min) (point)))))))
 
 (defun i3bar--process-sentinel (proc status)
-  "Handle events from the i3status process."
+  "Handle events from the i3status process (PROC).
+If the process has exited, this function stores the exit STATUS in
+`i3bar-string'."
   (unless (process-live-p proc)
     (setq i3bar--process nil)
     (let ((buf (process-buffer proc)))
       (when (and buf (buffer-live-p buf)) (kill-buffer buf)))
     (setq i3bar-string (format "i3bar: %s" status))))
 
-(defun i3bar-reload ()
+(defun i3bar-restart ()
   "Restart the i3status program."
   (interactive)
   (unless i3bar-mode (user-error "The i3bar-mode is not enabled"))
