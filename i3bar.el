@@ -50,6 +50,7 @@ i3bar status display for Emacs."
   :version "0.0.1"
   :group 'mode-line)
 
+;;;###autoload
 (define-minor-mode i3bar-mode
   "Display an i3bar in the mode-line."
   :global t :group 'i3bar
