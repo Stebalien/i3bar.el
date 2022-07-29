@@ -5,8 +5,8 @@
 ;; Author: Steven Allen <steven@stebalien.com>
 ;; URL: https://github.com/Stebalien/i3bar.el
 ;; Version: 0.0.1
-;; Package-Requires: ((emacs "28.0"))
-;; Keywords:
+;; Package-Requires: ((emacs "28.1"))
+;; Keywords: unix
 
 ;; This file is not part of GNU Emacs.
 
@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl-macs))
+(eval-when-compile (require 'cl-lib))
 
 (defvar i3bar--last-update nil
   "The last i3bar update received.")
