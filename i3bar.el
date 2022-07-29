@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(require 'cl-macs)
+(eval-when-compile (require 'cl-macs))
 
 (defvar i3bar--last-update nil
   "The last i3bar update received.")
