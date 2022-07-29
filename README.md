@@ -8,8 +8,6 @@ This package is primarily useful for EXWM users who wish to render a status-bar 
 - It can be combined with the tab-bar to save vertical space.
 - It can be themed by Emacs (see [Theming](#theming)).
 
-![Screenshot](screenshot.png)
-
 ## Installation
 
 1. Install and configure an [i3status compatible status-bar generator](https://wiki.archlinux.org/title/I3#i3status).
@@ -24,6 +22,10 @@ This package is primarily useful for EXWM users who wish to render a status-bar 
   :config
   (i3bar-mode 1))
 ```
+
+## Screenshot
+
+![Screenshot](screenshot.png)
 
 ## Tab Bar
 
