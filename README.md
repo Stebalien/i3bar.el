@@ -1,9 +1,16 @@
 # i3bar.el
 
 An Emacs package for displaying the output of an `i3status` compatible command in the `mode-line`
-(or `tab-bar`).
+or `tab-bar`.
 
-To use:
+This package is primarily useful for EXWM users who wish to render a status-bar within Emacs itself:
+
+- It can be combined with the tab-bar to save vertical space.
+- It can be themed by Emacs (see [Theming](#theming)).
+
+![Screenshot](screenshot.png)
+
+## Installation
 
 1. Install and configure an [i3status compatible status-bar generator](https://wiki.archlinux.org/title/I3#i3status).
 2. Install any required fonts (likely `ttf-font-awesome`).
