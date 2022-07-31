@@ -130,7 +130,7 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 (defun i3bar--redisplay ()
   "Redisplay the i3bar."
   (when i3bar-mode
-    (setq i3bar-string (mapconcat #'i3bar--format-block i3bar--last-update))
+    (setq i3bar-string (mapconcat #'i3bar--format-block i3bar--last-update ""))
     (force-mode-line-update t)))
 
 (defun i3bar--update (update)
