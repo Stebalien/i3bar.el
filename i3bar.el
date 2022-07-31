@@ -62,7 +62,7 @@ i3bar status display for Emacs."
     (i3bar--start)))
 
 (defcustom i3bar-command
-  (seq-find 'executable-find '("i3status" "i3status-rs" "i3blocks") "i3status")
+  (seq-find #'executable-find '("i3status" "i3status-rs" "i3blocks") "i3status")
   "The i3status command."
   :group 'i3bar
   :type '(choice
