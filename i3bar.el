@@ -176,7 +176,7 @@ much as it can, calling `i3bar--update' on all bar updates."
                        'update)
                  ;; We don't expect anything here, we should be done.
                  ('end (error "Unexpected output")))))
-          (json-parse-error) ; partial input, move on.
+          ((json-parse-error json-end-of-file)) ; partial input, move on.
           ((error debug)     ; cleanup after a failure.
            (delete-process i3bar--process)
            (setq i3bar--last-update nil
