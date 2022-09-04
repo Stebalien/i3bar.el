@@ -10,13 +10,15 @@ This package is primarily useful for EXWM users who wish to render a status-bar 
 
 ## Installation
 
+`i3bar` is available on [MELPA](https://melpa.org/#/i3bar).
+
 1. Install and configure an [i3status compatible status-bar generator](https://wiki.archlinux.org/title/I3#i3status).
 2. Install any required fonts (likely `ttf-font-awesome`).
 3. Install and configure this package.
 
 ```elisp
 (use-package i3bar
-  :quelpa (i3bar :fetcher github :repo "Stebalien/i3bar.el")
+  :ensure t ; assumes you have enabled MELPA per https://melpa.org/#/getting-started
   ;; Or with straight:
   ;:straight (i3bar :type git :host github :repo "Stebalien/i3bar.el")
   :config
