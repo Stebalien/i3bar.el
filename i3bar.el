@@ -101,6 +101,7 @@ expected to return the desired face, list of faces, or nil (for no face)."
   "The default i3bar face-function.
 This function applies the FOREGROUND and BACKGROUND colors as specified by the
 i3status program."
+  (declare (pure t))
   (let (face)
     (when foreground (setq face (plist-put face :foreground foreground)))
     (when background (setq face (plist-put face :background background)))
