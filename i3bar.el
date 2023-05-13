@@ -205,15 +205,16 @@ If the process has exited, this function stores the exit STATUS in
   "Start the i3bar."
   (i3bar--stop)
   (condition-case err
-    (setq i3bar--process (make-process
-                        :name "i3bar"
-                        :buffer " *i3status process*"
-                        :stderr " *i3status stderr*"
-                        :command (ensure-list i3bar-command)
-                        :connection-type 'pipe
-                        :noquery t
-                        :sentinel #'i3bar--process-sentinel
-                        :filter #'i3bar--process-filter))
+      (let ((default-directory user-emacs-directory))
+        (setq i3bar--process (make-process
+                              :name "i3bar"
+                              :buffer " *i3status process*"
+                              :stderr " *i3status stderr*"
+                              :command (ensure-list i3bar-command)
+                              :connection-type 'pipe
+                              :noquery t
+                              :sentinel #'i3bar--process-sentinel
+                              :filter #'i3bar--process-filter)))
     (error
      (setq i3bar-string (format "starting i3bar: %s" (error-message-string err))))))
 
