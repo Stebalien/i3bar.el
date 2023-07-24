@@ -32,6 +32,7 @@
 ;;; Code:
 
 (eval-when-compile (require 'cl-lib))
+(require 'xml)
 
 (defvar i3bar--last-update nil
   "The last i3bar update received.")
@@ -115,10 +116,14 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 (defun i3bar--format-block (block)
   "Format an i3bar BLOCK for display."
   (cl-destructuring-bind
-      (&key (full_text "") color background (separator t) &allow-other-keys)
+      (&key (full_text "") color background (markup "none") (separator t) &allow-other-keys)
       block
     (when color (setq color (substring color 0 -2)))
     (when background (setq background (substring background 0 -2)))
+    ;; Strip SGML entities. Ideally we'd strip any XML, but that's significantly more expensive...
+    (when (equal markup "pango")
+      (setq full_text (xml-substitute-special full_text)))
+    ;; Then format.
     (let (properties)
       (when-let (face (and i3bar-face-function
                            (funcall i3bar-face-function color background)))
