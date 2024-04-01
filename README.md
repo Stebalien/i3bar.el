@@ -25,6 +25,64 @@ This package is primarily useful for EXWM users who wish to render a status-bar 
   (i3bar-mode 1))
 ```
 
+## Usage with EXWM (or more generally without i3)
+
+To use this package with EXWM, you need to create a =~/.config/i3/config= file
+with the following entry:
+
+```text
+general {
+        output_format = "i3bar"
+}
+```
+
+This will cause i3 to output the status-bar to stdout in the i3status format.
+Then, you can use the following command to start i3bar:
+
+```elisp
+(use-package! i3bar
+  :config
+  (setopt tab-bar-format '(tab-bar-format-tabs        ; Optional: Remove to _only_ display the bar.
+                           tab-bar-format-align-right ; Optional: Remove to align left.
+                           tab-bar-format-global))
+  (i3bar-mode 1))
+```
+
+## Using as a fallback status bar
+
+If you are using this package in many different environments, you may want to use it as a fallback
+when no other status bar is running. You can do this by defining a macro which
+only loads the package if no other status bar is running:
+
+```elisp
+(defun check-processes-async (process-list callback)
+  "Check asynchronously if none of the processes in PROCESS-LIST are running and then call CALLBACK."
+  (let ((buffer (generate-new-buffer " *check-proc-async*")))
+    (set-process-sentinel
+     (apply #'start-process " *check-proc-async*" buffer "pidof" process-list)
+     (lambda (_process _event)
+       (unwind-protect
+           (funcall callback (= (buffer-size buffer) 0)) ; if buffer is empty, no processes are running
+         (kill-buffer buffer)))))
+  nil)
+
+(defmacro when-none-of-these-processes-running (process-list arg-form)
+  "Execute ARG-FORM if none of the processes in PROCESS-LIST are running."
+  `(check-processes-async ',process-list
+    (lambda (none-running)
+      (when none-running
+        ,arg-form))))
+        
+(when-none-of-these-processes-running
+ ("polybar" "xmobar")
+ (use-package! i3bar
+   :config
+   (setopt tab-bar-format '(tab-bar-format-tabs        ; Optional: Remove to _only_ display the bar.
+                            tab-bar-format-align-right ; Optional: Remove to align left.
+                            tab-bar-format-global)))
+   (i3bar-mode 1))
+```
+
 ## Screenshot
 
 ![Screenshot](screenshot.png)
