@@ -87,6 +87,38 @@ Then I use the following "theme" function to make the status-bar's theme match m
 (custom-set-variables '(i3bar-face-function i3bar-face-function-theme))
 ```
 
+## I3status Configuration
+
+### [`i3status`](https://github.com/i3/i3status)
+
+You need to create a `~/.config/i3status/config` file that explicitly sets the output format to "i3bar":
+
+```text
+general {
+        output_format = "i3bar"
+        colors = true
+        interval = 5
+}
+
+order += "battery all"
+order += "memory"
+order += "tztime local"
+
+battery all {
+        format = "%status %percentage %remaining"
+}
+memory {
+        format = "%used | %available"
+        threshold_degraded = "1G"
+        format_degraded = "MEMORY < %available"
+}
+
+tztime local {
+        format = "%Y-%m-%d %H:%M:%S"
+}
+```
+
+
 ## Known Issues
 
 This package is missing featuers and features and has some rough edges. I'm happy to accept patches
