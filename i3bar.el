@@ -124,11 +124,9 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
     (when (equal markup "pango")
       (setq full_text (xml-substitute-special full_text)))
     ;; Then format.
-    (let (properties)
-      (when-let (face (and i3bar-face-function
-                           (funcall i3bar-face-function color background)))
-        (setq properties (plist-put properties 'face face)))
-      (set-text-properties 0 (length full_text) properties full_text))
+    (when-let* (i3bar-face-function
+                (face (funcall i3bar-face-function color background)))
+      (set-text-properties 0 (length full_text) (list 'face face) full_text))
     (when (and separator (length> i3bar-separator 0))
       (setq full_text (concat full_text i3bar-separator)))
     full_text))
