@@ -139,14 +139,15 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
 
 (defun i3bar--update (update)
   "Apply an UPDATE to the i3status bar."
-  (setq i3bar--last-update update)
-  (i3bar--redisplay))
+  (when (not (equal update i3bar--last-update))
+    (setq i3bar--last-update update)
+    (i3bar--redisplay)))
 
 (defun i3bar--process-filter (proc string)
   "Process output from the i3status process.
 This function writes the STRING to PROC's buffer, then attempts to parse as
 much as it can, calling `i3bar--update' on all bar updates."
-  (let ((buf (process-buffer proc)))
+  (let ((buf (process-buffer proc)) update)
     (when (buffer-live-p buf)
       (with-current-buffer buf
         ;; Write the input to the buffer (might be partial).
@@ -171,7 +172,7 @@ much as it can, calling `i3bar--update' on all bar updates."
                  ;; Expect an element in the infinite "update" array.
                  ('update (if (= (following-char) ?\])
                               (progn (forward-char) 'end)
-                            (i3bar--update (i3bar--json-parse))
+                            (setq update (i3bar--json-parse))
                             'sep))
                  ;; Expect a separator (comma).
                  ('sep (unless (= (following-char) ?,)
@@ -184,8 +185,10 @@ much as it can, calling `i3bar--update' on all bar updates."
           ((error debug)     ; cleanup after a failure.
            (delete-process i3bar--process)
            (setq i3bar--last-update nil
+                 update nil
                  i3bar-string (format "i3bar failed: %s" err))))
-        (when (buffer-live-p buf) (delete-region (point-min) (point)))))))
+        (when (buffer-live-p buf) (delete-region (point-min) (point)))
+        (when update (i3bar--update update))))))
 
 (defun i3bar--process-sentinel (proc status)
   "Handle events from the i3status process (PROC).
