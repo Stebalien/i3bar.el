@@ -108,10 +108,13 @@ i3status program."
     (when background (setq face (plist-put face :background background)))
     face))
 
-(defun i3bar--json-parse ()
+(defsubst i3bar--json-parse ()
   "Parse a json object from the buffer, or signal an error.
 This is a thin wrapper around `json-parse-buffer', which changes the defaults."
-  (json-parse-buffer :object-type 'plist :false-object nil))
+  (json-parse-buffer :array-type 'list
+                     :object-type 'plist
+                     :false-object nil
+                     :null-object nil))
 
 (defun i3bar--format-block (block)
   "Format an i3bar BLOCK for display."
