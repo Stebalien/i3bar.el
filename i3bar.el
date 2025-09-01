@@ -124,7 +124,7 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
     (when color (setq color (substring color 0 -2)))
     (when background (setq background (substring background 0 -2)))
     ;; Strip SGML entities. Ideally we'd strip any XML, but that's significantly more expensive...
-    (when (equal markup "pango")
+    (when (and (equal markup "pango") (string-search "&" full_text))
       (setq full_text (xml-substitute-special full_text)))
     ;; Then format.
     (when-let* (i3bar-face-function
