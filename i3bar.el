@@ -211,6 +211,7 @@ If the process has exited, this function stores the exit STATUS in
       (let ((default-directory user-emacs-directory)
             (proc-buffer (get-buffer-create " *i3status process*")))
         (with-current-buffer proc-buffer
+          (set-buffer-multibyte nil)
           (erase-buffer)
           (add-hook 'after-change-functions 'i3bar--process-after-change nil t))
         (setq i3bar--process (make-process
@@ -218,6 +219,7 @@ If the process has exited, this function stores the exit STATUS in
                               :buffer proc-buffer
                               :stderr " *i3status stderr*"
                               :command (ensure-list i3bar-command)
+                              :coding 'binary
                               :connection-type 'pipe
                               :noquery t
                               :sentinel #'i3bar--process-sentinel)))
