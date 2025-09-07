@@ -146,46 +146,52 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
     (setq i3bar--last-update update)
     (i3bar--redisplay)))
 
-(defvar-local i3bar--state nil)
-
-(defun i3bar--process-after-change (&rest _ignored)
-  "Process i3bar updates in the current buffer."
-  (let ((buf (current-buffer)) update)
-    (goto-char (point-min))
-    (condition-case err
-        (while (progn (skip-syntax-forward " ") (not (eobp)))
-          (setq
-           i3bar--state
-           (pcase i3bar--state
-             ;; Expect a protocol header
-             ('nil (unless (= (plist-get (i3bar--json-parse) :version) 1)
-                     (error "Version not supported"))
-                   'begin)
-             ;; Expect an opening [ of the infinite array.
-             ('begin (unless (= (following-char) ?\[)
-                       (error "Expected array of updates"))
-                     (forward-char)
-                     'update)
-             ;; Expect an element in the infinite "update" array.
-             ('update (if (= (following-char) ?\])
-                          (progn (forward-char) 'end)
-                        (setq update (i3bar--json-parse))
-                        'sep))
-             ;; Expect a separator (comma).
-             ('sep (unless (= (following-char) ?,)
-                     (error "Expected a trailing comma"))
-                   (forward-char)
-                   'update)
-             ;; We don't expect anything here, we should be done.
-             ('end (error "Unexpected output")))))
-      ((json-parse-error json-end-of-file)) ; partial input, move on.
-      ((error debug)     ; cleanup after a failure.
-       (delete-process i3bar--process)
-       (setq i3bar--last-update nil
-             update nil
-             i3bar-string (format "i3bar failed: %s" err))))
-    (when (buffer-live-p buf) (delete-region (point-min) (point)))
-    (when update (i3bar--update update))))
+(defun i3bar--process-filter (proc string)
+  "Process output from the i3status process.
+This function writes the STRING to PROC's buffer, then attempts to parse as
+much as it can, calling `i3bar--update' on all bar updates."
+  (let ((buf (process-buffer proc)) update)
+    (when (buffer-live-p buf)
+      (with-current-buffer buf
+        ;; Write the input to the buffer (might be partial).
+        (save-excursion
+          (goto-char (process-mark proc))
+          (insert string)
+          (set-marker (process-mark proc) (point)))
+        (condition-case err
+            (while (progn (skip-chars-forward "[:space:]") (not (eobp)))
+              (process-put
+               proc 'i3bar-state
+               (pcase (process-get proc 'i3bar-state)
+                 ;; Expect a protocol header
+                 ('nil (unless (= (plist-get (i3bar--json-parse) :version) 1)
+                         (error "Version not supported"))
+                       'begin)
+                 ;; Expect an opening [ of the infinite array.
+                 ('begin (unless (= (following-char) ?\[)
+                           (error "Expected array of updates"))
+                         (forward-char)
+                         'update)
+                 ;; Expect an element in the infinite "update" array.
+                 ('update (if (= (following-char) ?\])
+                              (progn (forward-char) 'end)
+                            (setq update (i3bar--json-parse))
+                            'sep))
+                 ;; Expect a separator (comma).
+                 ('sep (unless (= (following-char) ?,)
+                         (error "Expected a trailing comma"))
+                       (forward-char)
+                       'update)
+                 ;; We don't expect anything here, we should be done.
+                 ('end (error "Unexpected output")))))
+          ((json-parse-error json-end-of-file)) ; partial input, move on.
+          ((error debug)     ; cleanup after a failure.
+           (delete-process i3bar--process)
+           (setq i3bar--last-update nil
+                 update nil
+                 i3bar-string (format "i3bar failed: %s" err))))
+        (when (buffer-live-p buf) (delete-region (point-min) (point)))
+        (when update (i3bar--update update))))))
 
 (defun i3bar--process-sentinel (proc status)
   "Handle events from the i3status process (PROC).
@@ -208,21 +214,19 @@ If the process has exited, this function stores the exit STATUS in
   "Start the i3bar."
   (i3bar--stop)
   (condition-case err
-      (let ((default-directory user-emacs-directory)
-            (proc-buffer (get-buffer-create " *i3status process*")))
-        (with-current-buffer proc-buffer
-          (set-buffer-multibyte nil)
-          (erase-buffer)
-          (add-hook 'after-change-functions 'i3bar--process-after-change nil t))
+      (let ((default-directory user-emacs-directory))
         (setq i3bar--process (make-process
                               :name "i3bar"
-                              :buffer proc-buffer
+                              :buffer " *i3status process*"
                               :stderr " *i3status stderr*"
                               :command (ensure-list i3bar-command)
                               :coding 'binary
                               :connection-type 'pipe
                               :noquery t
-                              :sentinel #'i3bar--process-sentinel)))
+                              :sentinel #'i3bar--process-sentinel
+                              :filter #'i3bar--process-filter))
+        (with-current-buffer (process-buffer i3bar--process)
+          (set-buffer-multibyte nil)))
     (error
      (setq i3bar-string (format "starting i3bar: %s" (error-message-string err))))))
 
