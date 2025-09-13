@@ -32,7 +32,10 @@
 ;;; Code:
 
 (eval-when-compile (require 'cl-lib))
-(require 'xml)
+(require 'dom)
+
+(defalias 'i3bar--dom-inner-text
+  (if (< emacs-major-version 31) #'dom-text #'dom-inner-text))
 
 (defvar i3bar--last-update nil
   "The last i3bar update received.")
@@ -123,9 +126,14 @@ This is a thin wrapper around `json-parse-buffer', which changes the defaults."
       block
     (when color (setq color (substring color 0 -2)))
     (when background (setq background (substring background 0 -2)))
-    ;; Strip SGML entities. Ideally we'd strip any XML, but that's significantly more expensive...
-    (when (and (equal markup "pango") (string-search "&" full_text))
-      (setq full_text (xml-substitute-special full_text)))
+    ;; Strip tags & SGML entities.
+    (when (and (equal markup "pango")
+               (or (string-search "<" full_text)   ;; tag
+                   (string-search "&" full_text))) ;; entity
+      (with-current-buffer (get-buffer-create " *i3bar-work-buffer*" t)
+        (insert "<markup>" full_text "</markup>")
+        (setq full_text (i3bar--dom-inner-text (libxml-parse-xml-region)))
+        (erase-buffer)))
     ;; Then format.
     (when-let* (i3bar-face-function
                 (face (funcall i3bar-face-function color background)))
