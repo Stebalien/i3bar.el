@@ -72,17 +72,17 @@ Then I use the following "theme" function to make the status-bar's theme match m
 ```elisp
 (defun i3bar-face-function-theme (foreground background)
   (list
-    (pcase (and foreground (upcase foreground))
-      ("#000000" `(:foreground ,(face-background 'default nil t)))
-      ("#111111" `(:foreground ,(face-background 'hl-line nil t)))
-      ("#AAAAAA" 'shadow)
-      ("#BBBBBB" nil)
-      ("#CCCCCC" 'success)
-      ("#EEEEEE" 'warning)
-      ("#FFFFFF" 'error))
-    (pcase (and background (upcase background))
-      ("#000000" nil)
-      ("#111111" 'hl-line))))
+   (pcase (and foreground (upcase foreground))
+     ("#000000" `(:foreground ,(face-background 'tab-line nil 'default)))
+     ("#111111" `(:foreground ,(face-background 'tool-bar nil 'default)))
+     ("#AAAAAA" 'shadow)
+     ("#BBBBBB" nil)
+     ("#CCCCCC" 'success)
+     ("#EEEEEE" 'warning)
+     ("#FFFFFF" 'error))
+   (pcase (and background (upcase background))
+     ("#000000" nil)
+     ("#111111" `(:background ,(face-background 'tool-bar nil 'default))))))
 
 (custom-set-variables '(i3bar-face-function i3bar-face-function-theme))
 ```
