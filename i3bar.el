@@ -35,7 +35,11 @@
 (require 'dom)
 
 (defalias 'i3bar--dom-inner-text
-  (if (< emacs-major-version 31) #'dom-text #'dom-inner-text))
+  (if (fboundp 'dom-inner-text)
+      #'dom-inner-text
+    (with-suppressed-warnings
+        ((obsolete dom-text))
+      #'dom-text)))
 
 (defvar i3bar--last-update nil
   "The last i3bar update received.")
